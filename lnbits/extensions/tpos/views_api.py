@@ -96,6 +96,8 @@ async def api_tpos_check_invoice(tpos_id, payment_hash):
         payment = await wallet.get_payment(payment_hash)
         await payment.set_pending(False)
 
-        return jsonify({"paid": True}), HTTPStatus.OK
+        print(payment)
+
+        return jsonify({"paid": True, "payment": payment}), HTTPStatus.OK
 
     return jsonify({"paid": False}), HTTPStatus.OK

@@ -115,6 +115,50 @@
         </div>
       </q-card>
     </q-dialog>
+    <q-dialog
+      v-model="paymentConfirmationDialog.show"
+      position="top"
+    >
+      <q-card
+        class="q-pa-lg q-pt-xl text-white lnbits__dialog-card"
+        style="background-color: #00b894 !important"
+      >
+        <div class="text-center">
+          <h5 class="q-mt-none">
+            ✓ Payment received!
+          </h5>
+          <div
+            v-if="paymentConfirmationDialog.data"
+          >
+            <q-card
+              v-show="paymentConfirmationDialog.showDetails"
+              class="q-pa-md"
+              style="background-color: #fff !important"
+            >
+              <payment-data :payment="paymentConfirmationDialog.data"></payment-data>
+            </q-card>
+          </div>
+        </div>
+        <div class="row justify-center q-gutter-lg q-mt-md">
+          <q-btn
+            push
+            color="marginal-text"
+            text-color="dark"
+            v-close-popup
+          >
+            OK
+          </q-btn>
+          <q-btn
+            push
+            color="marginal-text"
+            text-color="dark"
+            @click="showDetails()"
+          >
+            Details
+          </q-btn>
+        </div>
+      </q-card>
+    </q-dialog>
     <q-dialog v-model="urlDialog.show" position="top">
       <q-card class="q-pa-lg q-pt-xl lnbits__dialog-card">
         <q-responsive :ratio="1" class="q-mx-xl q-mb-md">
@@ -161,6 +205,41 @@
 {% endblock %} {% block scripts %}
 <script>
   Vue.component(VueQrcode.name, VueQrcode)
+  Vue.component('payment-data', {
+    props: ['payment'],
+    template:
+      `
+      {% raw %}
+        <div class="q-py-md text-dark" style="text-align: left;">
+          <div class="row justify-center q-mb-md">
+            <div role="alert" class="q-badge flex inline items-center no-wrap q-badge--single-line bg-yellow text-black">
+              #tpos
+            </div>
+          </div>
+          <div class="row"><div class="col-3">
+            <b>Date</b>:</div>
+            <div class="col-9">{{payment.date}}</div>
+          </div>
+          <div class="row">
+            <div class="col-3"><b>Description</b>:</div>
+            <div class="col-9">{{payment.description}}</div>
+          </div>
+          <div class="row">
+            <div class="col-3"><b>Amount</b>:</div>
+            <div class="col-9">{{(Number(payment.amount) / 1000).toFixed(2)}} sat</div>
+          </div>
+          <div class="row">
+            <div class="col-3"><b>Fee</b>:</div>
+            <div class="col-9">{{(Number(payment.fee) / 1000).toFixed(2)}} sat</div>
+          </div>
+          <div class="row">
+            <div class="col-3"><b>Payment hash</b>:</div>
+            <div class="col-9 text-wrap mono">{{payment.payment_hash}}</div>
+          </div>
+        </div>
+      {% endraw %}
+      `
+  })
 
   new Vue({
     el: '#vue',
@@ -179,6 +258,11 @@
         },
         urlDialog: {
           show: false
+        },
+        paymentConfirmationDialog: {
+          show: false,
+          showDetails: false,
+          data: null,
         }
       }
     },
@@ -218,6 +302,20 @@
           dialog.dismissMsg()
         }, 3000)
       },
+      showInformation: function (data) {
+        this.paymentConfirmationDialog.show = true
+        this.paymentConfirmationDialog.data = {
+          date: data[5],
+          description: data[4],
+          amount: data[2],
+          fee: data[3],
+          payment_hash: data[8],
+          extra: data[9]
+        }
+      },
+      showDetails: function() {
+        this.paymentConfirmationDialog.showDetails = true
+      },
       showInvoice: function () {
         var self = this
         var dialog = this.invoiceDialog
@@ -248,6 +346,8 @@
                     clearInterval(dialog.paymentChecker)
                     dialog.dismissMsg()
                     dialog.show = false
+
+                    self.showInformation(res.data.payment)
 
                     self.$q.notify({
                       type: 'positive',
