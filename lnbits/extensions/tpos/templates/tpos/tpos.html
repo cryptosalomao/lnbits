@@ -104,7 +104,13 @@
           </h5>
         </div>
         <div class="row q-mt-lg">
-          <q-btn color="primary" icon="receipt">Copy Invoice</q-btn>
+          <q-btn
+            icon="receipt"
+            color="primary"
+            @click="copyInvoiceToClipboard()"
+          >
+            Copy Invoice
+          </q-btn>
           <q-btn v-close-popup flat color="grey" class="q-ml-auto">Close</q-btn>
         </div>
       </q-card>
@@ -193,6 +199,17 @@
       }
     },
     methods: {
+      copyInvoiceToClipboard: function () {
+        var self = this
+        const { data } = self.invoiceDialog
+
+        navigator.clipboard.writeText(data.payment_request).then(function() {
+          self.$q.notify({
+            timeout: 3000,
+            message: "Copied to clipboard!"
+          })
+        })
+      },
       closeInvoiceDialog: function () {
         this.stack = []
         var dialog = this.invoiceDialog
