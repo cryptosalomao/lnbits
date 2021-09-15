@@ -13,6 +13,9 @@
       </div>
     </q-page-sticky>
     <q-page-sticky expand position="bottom">
+      <q-btn color="primary" @click="showRecentTransactions = true">
+        Recent Payments
+      </q-btn>
       <div class="row justify-center full-width">
         <div class="col-12 col-sm-8 col-md-6 col-lg-4">
           <div class="keypad q-pa-sm">
@@ -81,6 +84,19 @@
         </div>
       </div>
     </q-page-sticky>
+
+    <q-dialog
+      v-model="showRecentTransactions"
+      position="top"
+    >
+      <q-card
+        class="q-pa-lg q-pt-xl flex inline justify-center"
+      >
+        <recent-payments></recent-payments>
+        <q-btn v-close-popup color="primary">Close</q-btn>
+      </q-card>
+    </q-dialog>
+
     <q-dialog
       v-model="invoiceDialog.show"
       position="top"
@@ -205,6 +221,7 @@
 {% endblock %} {% block scripts %}
 <script>
   Vue.component(VueQrcode.name, VueQrcode)
+
   Vue.component('payment-data', {
     props: ['payment'],
     template:
@@ -218,7 +235,7 @@
           </div>
           <div class="row"><div class="col-3">
             <b>Date</b>:</div>
-            <div class="col-9">{{payment.date}}</div>
+            <div class="col-9">{{new Date(payment.date * 1000).toLocaleString()}}</div>
           </div>
           <div class="row">
             <div class="col-3"><b>Description</b>:</div>
@@ -239,6 +256,46 @@
         </div>
       {% endraw %}
       `
+  })
+
+  Vue.component('recent-payments', {
+    template: `
+      <div class="q-pa-md">
+        <q-table
+          dense
+          class="q-pa-md"
+          title="Recent Payments"
+          :data="payments"
+          :columns="columns"
+          :loading="loading"
+          no-data-label="There are no transactions"
+          row-key="date"
+          hide-bottom
+          v-if="payments"
+        />
+      </div>
+    `,
+    data: function() {
+      return {
+        tposId: '{{ tpos.id }}',
+        columns: [
+          { name: 'date', label: 'Date', field: 'date', align: 'left', format: (val) => new Date(val * 1000).toLocaleString("en-US") },
+          { name: 'description', label: 'Description', align: 'left', field: 'description' },
+          { name: 'amount', label: 'Amount', field: 'amount', format: (val) => (Number(val) / 1000).toFixed(2) + ' sat' },
+          { name: 'fee', label: 'Fee', field: 'fee', format: (val) => (Number(val) / 1000).toFixed(2) + ' sat' },
+        ],
+        payments: null,
+        loading: true
+      }
+    },
+    created: function() {
+      self = this
+
+      axios.get(`/tpos/api/v1/tposs/${this.tposId}/invoices`).then(function(data) {
+        self.payments = data.data.payments
+        self.loading = false
+      })
+    },
   })
 
   new Vue({
@@ -263,7 +320,8 @@
           show: false,
           showDetails: false,
           data: null,
-        }
+        },
+        showRecentTransactions: false
       }
     },
     computed: {
@@ -315,6 +373,10 @@
       },
       showDetails: function() {
         this.paymentConfirmationDialog.showDetails = true
+      },
+      openTransactionsDialog: function () {
+        var self = this
+
       },
       showInvoice: function () {
         var self = this

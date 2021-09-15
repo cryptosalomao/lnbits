@@ -1,7 +1,9 @@
+import json
+
 from quart import g, jsonify, request
 from http import HTTPStatus
 
-from lnbits.core.crud import get_user, get_wallet
+from lnbits.core.crud import get_user, get_wallet, get_payments
 from lnbits.core.services import create_invoice, check_invoice_status
 from lnbits.decorators import api_check_wallet_key, api_validate_post_request
 
@@ -77,6 +79,23 @@ async def api_tpos_create_invoice(tpos_id):
     )
 
 
+@tpos_ext.route("/api/v1/tposs/<tpos_id>/invoices", methods=["GET"])
+async def api_tpos_check_invoices(tpos_id):
+    tpos = await get_tpos(tpos_id)
+
+    if not tpos:
+        return jsonify({"message": "TPoS does not exist."}), HTTPStatus.NOT_FOUND
+
+    raw_payments = await get_payments(wallet_id=tpos.wallet, complete=True)
+    slice_payments = raw_payments[0:5]
+
+    payments = []
+    for payment in slice_payments:
+        payments.append({ "date": payment[5], "description": payment[4], "amount": payment[2], "fee": payment[3] })
+
+    return jsonify({"payments": payments}), HTTPStatus.OK
+
+
 @tpos_ext.route("/api/v1/tposs/<tpos_id>/invoices/<payment_hash>", methods=["GET"])
 async def api_tpos_check_invoice(tpos_id, payment_hash):
     tpos = await get_tpos(tpos_id)
@@ -95,8 +114,6 @@ async def api_tpos_check_invoice(tpos_id, payment_hash):
         wallet = await get_wallet(tpos.wallet)
         payment = await wallet.get_payment(payment_hash)
         await payment.set_pending(False)
-
-        print(payment)
 
         return jsonify({"paid": True, "payment": payment}), HTTPStatus.OK
 
